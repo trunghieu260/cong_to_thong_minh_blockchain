@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartMeter — Bảng điều khiển công tơ điện Blockchain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.1/ethers.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #0E1512;
+    --panel: #16201B;
+    --panel-2: #1C2822;
+    --line: #2A3A32;
+    --text: #E9EEE9;
+    --muted: #8AA294;
+    --amber: #F2B544;
+    --green: #4ADE80;
+    --red: #F2705A;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(74,222,128,0.05), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(242,181,68,0.04), transparent 40%);
+  }
+  .wrap{ max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  header{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding-bottom: 22px; border-bottom: 1px solid var(--line); margin-bottom: 26px;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand .dot{
+    width:12px; height:12px; border-radius:50%; background: var(--green);
+    box-shadow: 0 0 10px var(--green); flex-shrink:0;
+  }
+  .brand h1{ font-family: var(--font-display); font-size: 22px; font-weight:700; letter-spacing: -0.01em;}
+  .brand p{ color: var(--muted); font-size: 12.5px; margin-top:2px;}
+
+  #connectBtn{
+    background: var(--green); color: #0E1512; border:none; padding: 11px 20px;
+    font-family: var(--font-mono); font-weight:700; font-size: 13px; border-radius:6px;
+    cursor:pointer; letter-spacing: 0.02em; transition: transform .12s ease, opacity .12s ease;
+  }
+  #connectBtn:hover{ transform: translateY(-1px); opacity:0.92;}
+  #connectBtn:disabled{ opacity:.5; cursor:default; transform:none;}
+
+  .wallet-chip{
+    display:flex; align-items:center; gap:10px; background: var(--panel);
+    border:1px solid var(--line); border-radius:6px; padding:9px 14px; font-size:12.5px;
+  }
+  .wallet-chip .addr{ color: var(--green); }
+  .net-badge{
+    font-size:10.5px; padding:2px 8px; border-radius: 20px; border:1px solid var(--line);
+    color: var(--muted); text-transform:uppercase; letter-spacing:0.06em;
+  }
+  .net-badge.ok{ color: var(--green); border-color: rgba(74,222,128,0.4); }
+  .net-badge.bad{ color: var(--red); border-color: rgba(242,112,90,0.4); }
+
+  .setup{
+    background: var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:16px 18px; margin-bottom: 22px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+  }
+  .setup label{ font-size: 12px; color: var(--muted); }
+  .setup input{
+    flex:1; min-width:280px; background: var(--bg); border:1px solid var(--line); color:var(--text);
+    padding: 10px 12px; border-radius:6px; font-family: var(--font-mono); font-size:12.5px;
+  }
+  .setup button{
+    background: var(--panel-2); border:1px solid var(--line); color: var(--text);
+    padding:10px 16px; border-radius:6px; cursor:pointer; font-family: var(--font-mono); font-size:12.5px;
+  }
+
+  .grid{ display:grid; grid-template-columns: 1.15fr 0.85fr; gap: 20px; }
+  @media (max-width: 880px){ .grid{ grid-template-columns: 1fr; } }
+
+  .card{
+    background: var(--panel); border:1px solid var(--line); border-radius:12px; padding: 22px;
+    margin-bottom: 20px;
+  }
+  .card h2{
+    font-family: var(--font-display); font-size:15px; font-weight:600; margin-bottom: 4px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .card .eyebrow{ color: var(--muted); font-size: 11px; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px; }
+
+  .role-tabs{ display:flex; gap:8px; margin-bottom:18px; }
+  .role-tabs button{
+    flex:1; background: var(--panel-2); border:1px solid var(--line); color: var(--muted);
+    padding:10px; border-radius:7px; cursor:pointer; font-family: var(--font-mono); font-size:12.5px; font-weight:600;
+  }
+  .role-tabs button.active{ color: var(--bg); background: var(--amber); border-color: var(--amber); }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  .field{ margin-bottom: 14px; }
+  .field label{ display:block; font-size:11.5px; color: var(--muted); margin-bottom:6px; }
+  .field input{
+    width:100%; background: var(--bg); border:1px solid var(--line); color:var(--text);
+    padding: 10px 12px; border-radius:6px; font-family: var(--font-mono); font-size:13px;
+  }
+  .field input:focus{ outline:none; border-color: var(--green); }
+
+  .action-btn{
+    width:100%; background: var(--green); color:#0E1512; border:none; padding:11px;
+    border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; font-family: var(--font-mono);
+    margin-top:4px;
+  }
+  .action-btn.secondary{ background: var(--panel-2); color: var(--text); border:1px solid var(--line); }
+  .action-btn:disabled{ opacity:.45; cursor:default; }
+
+  .stat-row{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); font-size:13px; }
+  .stat-row:last-child{ border-bottom:none; }
+  .stat-row .label{ color: var(--muted); }
+  .stat-row .val{ color: var(--amber); font-weight:600; }
+
+  .bill-item{
+    border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px;
+    background: var(--panel-2);
+  }
+  .bill-item .top{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:8px; }
+  .bill-item .id{ color: var(--muted); }
+  .status-pill{ font-size:10.5px; padding:2px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.05em; }
+  .status-pill.unpaid{ background: rgba(242,112,90,0.12); color: var(--red); border:1px solid rgba(242,112,90,0.35); }
+  .status-pill.paid{ background: rgba(74,222,128,0.12); color: var(--green); border:1px solid rgba(74,222,128,0.35); }
+  .bill-item .meta{ font-size:11.5px; color: var(--muted); line-height:1.7; }
+  .bill-item .pay-btn{
+    margin-top:10px; width:100%; background: var(--amber); color:#0E1512; border:none;
+    padding:9px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer; font-family: var(--font-mono);
+  }
+
+  /* Ledger — signature element */
+  .ledger{
+    background: #0A100D; border:1px solid var(--line); border-radius:12px;
+    padding: 0; overflow:hidden;
+  }
+  .ledger-head{
+    padding: 16px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;
+  }
+  .ledger-head h2{ font-family: var(--font-display); font-size:14px; }
+  .ledger-head .live{ display:flex; align-items:center; gap:6px; font-size:10.5px; color: var(--green); text-transform:uppercase; letter-spacing:0.08em; }
+  .ledger-head .live .blip{ width:6px; height:6px; border-radius:50%; background: var(--green); animation: pulse 1.6s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+  .ledger-body{ max-height: 340px; overflow-y:auto; padding: 8px 0; }
+  .ledger-row{
+    padding: 10px 20px; font-size: 12px; border-bottom: 1px dashed rgba(42,58,50,0.6);
+    display:flex; gap:10px; color: var(--muted);
+  }
+  .ledger-row .tag{ flex-shrink:0; width:120px; font-weight:700; }
+  .ledger-row .tag.reading{ color: var(--amber); }
+  .ledger-row .tag.payment{ color: var(--green); }
+  .ledger-row .tag.reg{ color: #8AB4F8; }
+  .ledger-row .tag.price{ color: var(--red); }
+  .ledger-row .txt{ color: var(--text); }
+  .ledger-empty{ padding: 30px 20px; text-align:center; color: var(--muted); font-size:12px; }
+
+  .msg{ font-size:12px; padding:10px 12px; border-radius:6px; margin-top:10px; display:none; }
+  .msg.show{ display:block; }
+  .msg.err{ background: rgba(242,112,90,0.1); color: var(--red); border:1px solid rgba(242,112,90,0.3); }
+  .msg.ok{ background: rgba(74,222,128,0.1); color: var(--green); border:1px solid rgba(74,222,128,0.3); }
+  .msg.info{ background: rgba(242,181,68,0.1); color: var(--amber); border:1px solid rgba(242,181,68,0.3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="dot"></div>
+      <div>
+        <h1>SmartMeter</h1>
+        <p>Công tơ điện thông minh trên Ethereum Sepolia</p>
+      </div>
+    </div>
+    <div id="headerRight" style="display:flex; gap:10px; align-items:center;">
+      <button id="connectBtn">Kết nối MetaMask</button>
+    </div>
+  </header>
+
+  <div class="setup">
+    <label for="contractAddr">Địa chỉ hợp đồng (deploy trên Remix):</label>
+    <input id="contractAddr" type="text" placeholder="0x...">
+    <button id="loadContractBtn">Tải hợp đồng</button>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <div class="role-tabs">
+          <button class="tab-btn active" data-role="owner">Công ty điện lực</button>
+          <button class="tab-btn" data-role="customer">Khách hàng</button>
+        </div>
+
+        <!-- OWNER PANEL -->
+        <div class="panel active" id="panel-owner">
+          <div class="eyebrow">Quản trị hệ thống</div>
+
+          <div class="field">
+            <label>Đăng ký khách hàng — Địa chỉ ví</label>
+            <input id="regAddr" type="text" placeholder="0x...">
+          </div>
+          <div class="field">
+            <label>Mã công tơ</label>
+            <input id="regMeter" type="text" placeholder="VD: MTR-001">
+          </div>
+          <button class="action-btn secondary" id="registerBtn">Đăng ký công tơ</button>
+
+          <div style="height:18px;"></div>
+
+          <div class="field">
+            <label>Ghi chỉ số mới — Địa chỉ ví khách hàng</label>
+            <input id="readAddr" type="text" placeholder="0x...">
+          </div>
+          <div class="field">
+            <label>Chỉ số hiện tại (kWh)</label>
+            <input id="readValue" type="number" placeholder="VD: 150">
+          </div>
+          <button class="action-btn" id="recordBtn">Ghi chỉ số & phát hành hóa đơn</button>
+
+          <div style="height:18px;"></div>
+
+          <div class="field">
+            <label>Đơn giá điện mới (wei / kWh)</label>
+            <input id="priceValue" type="number" placeholder="VD: 1000000000000000">
+          </div>
+          <button class="action-btn secondary" id="setPriceBtn">Cập nhật đơn giá</button>
+
+          <div class="msg" id="ownerMsg"></div>
+        </div>
+
+        <!-- CUSTOMER PANEL -->
+        <div class="panel" id="panel-customer">
+          <div class="eyebrow">Hóa đơn của bạn</div>
+          <button class="action-btn secondary" id="refreshBillsBtn">Tải hóa đơn</button>
+          <div id="billsList" style="margin-top:16px;"></div>
+          <div class="msg" id="customerMsg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Thông số hệ thống</h2>
+        <div class="eyebrow">Đọc trực tiếp từ hợp đồng</div>
+        <div class="stat-row"><span class="label">Đơn giá hiện tại</span><span class="val" id="statPrice">—</span></div>
+        <div class="stat-row"><span class="label">Chủ hợp đồng</span><span class="val" id="statOwner">—</span></div>
+        <div class="stat-row"><span class="label">Số dư hợp đồng</span><span class="val" id="statBalance">—</span></div>
+        <div class="stat-row"><span class="label">Mạng</span><span class="val" id="statNetwork">—</span></div>
+      </div>
+
+      <div class="ledger">
+        <div class="ledger-head">
+          <h2>Sổ cái sự kiện</h2>
+          <div class="live"><div class="blip"></div>Trực tiếp</div>
+        </div>
+        <div class="ledger-body" id="ledgerBody">
+          <div class="ledger-empty">Chưa có sự kiện nào. Kết nối hợp đồng để bắt đầu theo dõi.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SEPOLIA_CHAIN_ID = 11155111;
+
+const CONTRACT_ABI = [
+  "function owner() view returns (address)",
+  "function pricePerKWh() view returns (uint256)",
+  "function registerCustomer(address _customerAddr, string _meterCode)",
+  "function recordReading(address _customerAddr, uint256 _currentReading)",
+  "function payBill(uint256 _billId) payable",
+  "function setPricePerKWh(uint256 _newPrice)",
+  "function getBillIds(address _customerAddr) view returns (uint256[])",
+  "function getBill(uint256 _billId) view returns (uint256 previousReading, uint256 currentReading, uint256 consumption, uint256 amountDue, uint256 timestamp, uint8 status)",
+  "function getContractBalance() view returns (uint256)",
+  "event CustomerRegistered(address indexed customerAddr, string meterCode)",
+  "event ReadingRecorded(address indexed customerAddr, uint256 indexed billId, uint256 previousReading, uint256 currentReading, uint256 consumption, uint256 amountDue)",
+  "event PaymentReceived(address indexed customerAddr, uint256 indexed billId, uint256 amountPaid, uint256 timestamp)",
+  "event PriceUpdated(uint256 newPricePerKWh)"
+];
+
+let provider, signer, contract, userAddress;
+
+const $ = (id) => document.getElementById(id);
+
+function showMsg(el, text, type){
+  el.textContent = text;
+  el.className = 'msg show ' + type;
+  setTimeout(()=>{ el.classList.remove('show'); }, 6000);
+}
+
+function addLedgerRow(tag, tagClass, text){
+  const body = $('ledgerBody');
+  const empty = body.querySelector('.ledger-empty');
+  if(empty) empty.remove();
+  const row = document.createElement('div');
+  row.className = 'ledger-row';
+  row.innerHTML = `<span class="tag ${tagClass}">${tag}</span><span class="txt">${text}</span>`;
+  body.prepend(row);
+}
+
+function shortAddr(a){ return a.slice(0,6) + '…' + a.slice(-4); }
+
+// ---------- Connect wallet ----------
+$('connectBtn').addEventListener('click', async () => {
+  if(!window.ethereum){
+    alert('Không tìm thấy MetaMask. Vui lòng cài đặt extension MetaMask trước.');
+    return;
+  }
+  try{
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send('eth_requestAccounts', []);
+    signer = await provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    const network = await provider.getNetwork();
+    const netBadgeOk = network.chainId === SEPOLIA_CHAIN_ID;
+
+    $('headerRight').innerHTML = `
+      <div class="wallet-chip">
+        <span class="addr">${shortAddr(userAddress)}</span>
+        <span class="net-badge ${netBadgeOk ? 'ok' : 'bad'}">${netBadgeOk ? 'Sepolia' : 'Sai mạng'}</span>
+      </div>`;
+    $('statNetwork').textContent = netBadgeOk ? 'Sepolia Testnet' : `Chain ID ${network.chainId} (không phải Sepolia)`;
+
+    if(!netBadgeOk){
+      alert('Vui lòng chuyển MetaMask sang mạng Sepolia Testnet.');
+    }
+
+    window.ethereum.on('accountsChanged', () => window.location.reload());
+    window.ethereum.on('chainChanged', () => window.location.reload());
+
+  }catch(err){
+    console.error(err);
+    alert('Kết nối ví thất bại: ' + (err.message || err));
+  }
+});
+
+// ---------- Load contract ----------
+$('loadContractBtn').addEventListener('click', async () => {
+  const addr = $('contractAddr').value.trim();
+  if(!ethers.isAddress(addr)){
+    alert('Địa chỉ hợp đồng không hợp lệ.');
+    return;
+  }
+  if(!signer){
+    alert('Vui lòng kết nối MetaMask trước.');
+    return;
+  }
+  contract = new ethers.Contract(addr, CONTRACT_ABI, signer);
+  await refreshStats();
+  attachEventListeners();
+  addLedgerRow('HE THONG', 'reg', `Đã tải hợp đồng tại ${shortAddr(addr)}`);
+});
+
+async function refreshStats(){
+  try{
+    const price = await contract.pricePerKWh();
+    const ownerAddr = await contract.owner();
+    const balance = await contract.getContractBalance();
+    $('statPrice').textContent = ethers.formatEther(price) + ' ETH/kWh';
+    $('statOwner').textContent = shortAddr(ownerAddr);
+    $('statBalance').textContent = ethers.formatEther(balance) + ' ETH';
+  }catch(err){
+    console.error(err);
+  }
+}
+
+function attachEventListeners(){
+  contract.on('CustomerRegistered', (customerAddr, meterCode) => {
+    addLedgerRow('DANG KY', 'reg', `${shortAddr(customerAddr)} → công tơ ${meterCode}`);
+  });
+  contract.on('ReadingRecorded', (customerAddr, billId, prev, curr, consumption, amountDue) => {
+    addLedgerRow('CHI SO', 'reading', `${shortAddr(customerAddr)} · hóa đơn #${billId} · ${consumption} kWh · ${ethers.formatEther(amountDue)} ETH`);
+    refreshStats();
+  });
+  contract.on('PaymentReceived', (customerAddr, billId, amountPaid) => {
+    addLedgerRow('THANH TOAN', 'payment', `${shortAddr(customerAddr)} đã trả hóa đơn #${billId} · ${ethers.formatEther(amountPaid)} ETH`);
+    refreshStats();
+  });
+  contract.on('PriceUpdated', (newPrice) => {
+    addLedgerRow('DON GIA', 'price', `Đơn giá mới: ${ethers.formatEther(newPrice)} ETH/kWh`);
+    refreshStats();
+  });
+}
+
+// ---------- Role tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('panel-' + btn.dataset.role).classList.add('active');
+  });
+});
+
+// ---------- Owner actions ----------
+$('registerBtn').addEventListener('click', async () => {
+  if(!contract) return alert('Vui lòng tải hợp đồng trước.');
+  const addr = $('regAddr').value.trim();
+  const meter = $('regMeter').value.trim();
+  if(!ethers.isAddress(addr) || !meter) return showMsg($('ownerMsg'), 'Vui lòng nhập địa chỉ ví và mã công tơ hợp lệ.', 'err');
+  try{
+    $('registerBtn').disabled = true;
+    const tx = await contract.registerCustomer(addr, meter);
+    showMsg($('ownerMsg'), 'Đang xử lý giao dịch...', 'info');
+    await tx.wait();
+    showMsg($('ownerMsg'), 'Đăng ký khách hàng thành công.', 'ok');
+    $('regAddr').value=''; $('regMeter').value='';
+  }catch(err){
+    showMsg($('ownerMsg'), 'Lỗi: ' + (err.reason || err.message), 'err');
+  }finally{
+    $('registerBtn').disabled = false;
+  }
+});
+
+$('recordBtn').addEventListener('click', async () => {
+  if(!contract) return alert('Vui lòng tải hợp đồng trước.');
+  const addr = $('readAddr').value.trim();
+  const val = $('readValue').value.trim();
+  if(!ethers.isAddress(addr) || val === '') return showMsg($('ownerMsg'), 'Vui lòng nhập địa chỉ ví và chỉ số hợp lệ.', 'err');
+  try{
+    $('recordBtn').disabled = true;
+    const tx = await contract.recordReading(addr, BigInt(val));
+    showMsg($('ownerMsg'), 'Đang xử lý giao dịch...', 'info');
+    await tx.wait();
+    showMsg($('ownerMsg'), 'Ghi chỉ số & phát hành hóa đơn thành công.', 'ok');
+    $('readAddr').value=''; $('readValue').value='';
+  }catch(err){
+    showMsg($('ownerMsg'), 'Lỗi: ' + (err.reason || err.message), 'err');
+  }finally{
+    $('recordBtn').disabled = false;
+  }
+});
+
+$('setPriceBtn').addEventListener('click', async () => {
+  if(!contract) return alert('Vui lòng tải hợp đồng trước.');
+  const val = $('priceValue').value.trim();
+  if(val === '') return showMsg($('ownerMsg'), 'Vui lòng nhập đơn giá mới (wei).', 'err');
+  try{
+    $('setPriceBtn').disabled = true;
+    const tx = await contract.setPricePerKWh(BigInt(val));
+    showMsg($('ownerMsg'), 'Đang xử lý giao dịch...', 'info');
+    await tx.wait();
+    showMsg($('ownerMsg'), 'Cập nhật đơn giá thành công.', 'ok');
+    $('priceValue').value='';
+  }catch(err){
+    showMsg($('ownerMsg'), 'Lỗi: ' + (err.reason || err.message), 'err');
+  }finally{
+    $('setPriceBtn').disabled = false;
+  }
+});
+
+// ---------- Customer actions ----------
+$('refreshBillsBtn').addEventListener('click', async () => {
+  if(!contract || !userAddress) return alert('Vui lòng kết nối ví và tải hợp đồng trước.');
+  try{
+    $('refreshBillsBtn').disabled = true;
+    const billIds = await contract.getBillIds(userAddress);
+    const listEl = $('billsList');
+    listEl.innerHTML = '';
+    if(billIds.length === 0){
+      listEl.innerHTML = '<div class="ledger-empty">Bạn chưa có hóa đơn nào.</div>';
+      return;
+    }
+    for(const id of billIds){
+      const bill = await contract.getBill(id);
+      const [previousReading, currentReading, consumption, amountDue, timestamp, status] = bill;
+      const isPaid = Number(status) === 1;
+      const date = new Date(Number(timestamp) * 1000).toLocaleString('vi-VN');
+
+      const item = document.createElement('div');
+      item.className = 'bill-item';
+      item.innerHTML = `
+        <div class="top">
+          <span class="id">Hóa đơn #${id}</span>
+          <span class="status-pill ${isPaid ? 'paid' : 'unpaid'}">${isPaid ? 'Đã thanh toán' : 'Chưa thanh toán'}</span>
+        </div>
+        <div class="meta">
+          Chỉ số: ${previousReading} → ${currentReading} kWh (tiêu thụ ${consumption} kWh)<br>
+          Số tiền: ${ethers.formatEther(amountDue)} ETH<br>
+          Ngày ghi: ${date}
+        </div>
+        ${!isPaid ? `<button class="pay-btn" data-id="${id}" data-amount="${amountDue}">Thanh toán ${ethers.formatEther(amountDue)} ETH</button>` : ''}
+      `;
+      listEl.appendChild(item);
+    }
+
+    listEl.querySelectorAll('.pay-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const billId = btn.dataset.id;
+        const amount = btn.dataset.amount;
+        try{
+          btn.disabled = true;
+          btn.textContent = 'Đang xử lý...';
+          const tx = await contract.payBill(billId, { value: amount });
+          await tx.wait();
+          showMsg($('customerMsg'), `Đã thanh toán hóa đơn #${billId} thành công.`, 'ok');
+          $('refreshBillsBtn').click();
+        }catch(err){
+          showMsg($('customerMsg'), 'Lỗi thanh toán: ' + (err.reason || err.message), 'err');
+          btn.disabled = false;
+          btn.textContent = 'Thử lại';
+        }
+      });
+    });
+
+  }catch(err){
+    showMsg($('customerMsg'), 'Lỗi: ' + (err.reason || err.message), 'err');
+  }finally{
+    $('refreshBillsBtn').disabled = false;
+  }
+});
+</script>
+</body>
+</html>
