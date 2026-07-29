@@ -1,4 +1,4 @@
-# Smart Meter OCR + Blockchain Electricity Billing
+# XÂY DỰNG HỆ THỐNG CÔNG TƠ ĐIỆN THÔNG MINH ỨNG DỤNG BLOCKCHAIN
 
 ## 1. Giới thiệu
 
