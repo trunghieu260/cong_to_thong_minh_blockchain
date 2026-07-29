@@ -478,8 +478,3 @@ Response lỗi:
 - Thêm cảnh báo tiêu thụ điện bất thường.
 - Triển khai Smart Contract lên Mainnet.
 
----
-
-# 16. License
-
-MIT License
